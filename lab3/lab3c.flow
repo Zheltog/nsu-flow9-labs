@@ -1,0 +1,30 @@
+import ds/array;
+import runtime;
+
+fibHelper(n: int, res: ref [int]) -> [int] {
+    if (n < 1) {
+        [];
+    } else if (n == 1) {
+        refArrayPush(res, 0);
+        ^res;
+    } else if (n == 2) {
+        refArrayPush(res, 0);
+        refArrayPush(res, 1);
+        ^res;
+    } else {
+        fibHelper(n-1, res);
+        refArrayPush(res, (^res)[n-2] + (^res)[n-3]);
+        ^res;
+    }
+}
+
+fib(n : int) -> [int] {
+    fibHelper(n, ref []);
+}
+
+main () {
+    println(fib(7));
+    println(fib(0));
+    println(fib(1));
+    println(fib(2));
+}

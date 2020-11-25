@@ -1,0 +1,64 @@
+import myrationals;
+
+export {
+    simplify(e : Expr) -> Expr;
+}
+
+// expresion
+Expr ::= Var, IntConst, RatConst, Minus, Div, Sub, Mul, Sum, Pow;
+// variable
+Var : (name : string);
+// integer constant (n)
+IntConst : (value : int);
+// rational constant (n/m)
+RatConst : (value : Rational);
+// simple minus (-n)
+Minus : (e : Expr);
+// division (/)
+Div : (left : Expr, right : Expr);
+// subtraction (-)
+Sub : (left: Expr, right : Expr);
+// multiplication (*)
+Mul : (left : Expr, right : Expr);
+// addition (+)
+Sum : (left : Expr, right : Expr);
+// power (^)
+Pow : (left : Expr, right : Expr);
+
+simplify(e : Expr) -> Expr {
+    // simplifying expression
+    switch(e) {
+		Var(x): Var(x);
+		IntConst(c): IntConst(c);
+		RatConst(c): RatConst(c);
+		Minus(r): Minus(simplify(r));
+		Div(l, r) : {
+			if (l == r) {IntConst(1)}
+            else if (r == IntConst(1)) {l} 
+            else {Div(simplify(l), simplify(r))};
+		}
+		Sub(l, r) : {
+			if (l == IntConst(0) && r == IntConst(0)) {IntConst(0)} 
+            else if (l == r) {IntConst(0)}
+            else if (r == IntConst(0)) {l}
+            else if (l == IntConst(0)) {Minus(r)}
+            else {Sub(simplify(l), simplify(r))};
+		}
+		Mul(l, r) : {
+			if (l == IntConst(0) || r == IntConst(0)) {IntConst(0)} 
+            else if (l == IntConst(1)) {r}
+            else if (r == IntConst(1)) {l} 
+            else {Mul(simplify(l), simplify(r))};
+		}
+		Sum(l, r) : {
+			if (l == IntConst(0) && r == IntConst(0)) {IntConst(0)} 
+            else if (l == IntConst(0)) {r}
+            else if (r == IntConst(0)) {l}
+            else {Sum(simplify(l), simplify(r))};
+		}
+		Pow(l, r) : {
+			if (l == IntConst(1) || r == IntConst(0)) {IntConst(1)}
+            else {Pow(simplify(l), simplify(r))}
+        }
+    }
+}

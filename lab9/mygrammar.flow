@@ -1,0 +1,22 @@
+import myrationals;
+
+// expresion
+Expr ::= Var, IntConst, RatConst, Minus, Div, Sub, Mul, Sum, Pow;
+// variable
+Var : (name : string);
+// integer constant (n)
+IntConst : (value : int);
+// rational constant (n/m)
+RatConst : (value : Rational);
+// simple minus (-n)
+Minus : (e : Expr);
+// division (/)
+Div : (left : Expr, right : Expr);
+// subtraction (-)
+Sub : (left: Expr, right : Expr);
+// multiplication (*)
+Mul : (left : Expr, right : Expr);
+// addition (+)
+Sum : (left : Expr, right : Expr);
+// power (^)
+Pow : (left : Expr, right : Expr);

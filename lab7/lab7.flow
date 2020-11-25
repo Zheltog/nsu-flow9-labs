@@ -1,0 +1,29 @@
+import string;
+import lingo/pegcode/driver;
+import mygrammar;
+
+arithGrammarOp: ref Maybe<[PegOp]> = ref None();
+
+calc(e : Expr) -> int {
+	switch(e) {
+		IntConst(c) : {
+			c;
+		}
+		Mul(l, r) : {
+			calc(l) * calc(r);
+		}
+		Add(l, r) : {
+			calc(l) + calc(r);
+		}
+	}
+}
+
+initGrammar() {
+	onlyOnce(arithGrammarOp, \ -> {
+		compilePegGrammar("#include mylingo.lingo");
+	});
+}
+
+main() {
+	println(calc(parsic(initGrammar(), " 1   + 2     *3   ", defaultPegActions)));
+}

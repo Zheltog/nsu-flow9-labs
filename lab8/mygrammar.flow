@@ -1,0 +1,5 @@
+Expr ::= Var, IntConst, Mul, Add;
+Var : (name : string);
+IntConst : (value : int);
+Mul : (left : Expr, right : Expr);
+Add : (left : Expr, right : Expr);

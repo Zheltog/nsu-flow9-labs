@@ -1,0 +1,22 @@
+import ds/array;
+import runtime;
+
+inds(a : [int], m : int) -> [Pair<int, int>] {
+    foldi(a, [], \i, acc1, a_i ->
+        {
+            foldi(a, acc1, \j, acc2, a_j -> {
+                if (a_i + a_j == m && i <= j) {
+                    concat(acc2, [Pair(i, j)]);
+                } else {
+                    acc2;
+                }
+            }
+            );
+        }
+        );
+}
+
+main () {
+    intArr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    println(inds(intArr, 9));
+}

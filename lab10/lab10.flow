@@ -1,0 +1,152 @@
+import ds/tree;
+import lingo/pegcode/driver;
+import mygrammar;
+
+arithGrammarOp: ref Maybe<[PegOp]> = ref None();
+
+initGrammar() {
+	onlyOnce(arithGrammarOp, \ -> {
+		compilePegGrammar("#include mylingo.lingo");
+	});
+}
+
+calcAST(e : Expr, vars : Tree<string, Rational>) -> Maybe<Rational> {
+	// calculating abstract syntax tree (for rationals)
+	switch(e) {
+		// checking type of expression
+		Var(x) : {
+			// checking if variable is initialized
+			// (if there is value for variable-name-key in variables-tree)
+			switch(lookupTree(vars, x)) {
+				Some(val): Some(val);
+				None(): {
+					println("ERROR :: variable is not initialized");
+					None();
+				};
+			}
+		}
+		IntConst(c) : {
+			// returning rational c/1 == c
+			Some(Rational(c, 1));
+		}
+		RatConst(c) : {
+			Some(c);
+		}
+		Minus(r) : {
+			// returning -expr
+			switch(calcAST(r, vars)) {
+				Some(expr): Some(minusRational(expr));
+				None(): None();
+			};
+		}
+		Div(l, r) : {
+			// l/r
+			// checking left operand
+			switch(calcAST(l, vars)) {
+                Some(left): {
+					// checking right operand
+					switch(calcAST(r, vars)) {
+                    	Some(right): Some(divRationals(left, right));
+                    	None(): None();
+					}
+            	};
+                None(): None();
+            };
+		}
+		Sub(l, r) : {
+			// l-r
+			// checking left operand
+			switch(calcAST(l, vars)) {
+                Some(left): {
+					// checking right operand
+					switch(calcAST(r, vars)) {
+                    	Some(right): Some(subRationals(left, right));
+                    	None(): None();
+					}
+            	};
+                None(): None();
+            };
+		}
+		Mul(l, r) : {
+			// l*r
+			// checking left operand
+			switch(calcAST(l, vars)) {
+                Some(left): {
+					// checking right operand
+					switch(calcAST(r, vars)) {
+                    	Some(right): Some(multRationals(left, right));
+                    	None(): None();
+					}
+            	};
+                None(): None();
+            };
+		}
+		Sum(l, r) : {
+			// l+r
+			// checking left operand
+			switch(calcAST(l, vars)) {
+                Some(left): {
+					switch(calcAST(r, vars)) {
+						// checking right operand
+                    	Some(right): Some(sumRationals(left, right));
+                    	None(): None();
+					}
+            	};
+                None(): None();
+            };
+		}
+		Pow(l, r) : {
+			// l^r
+			// checking left operand
+			switch(calcAST(l, vars)) {
+                Some(left): {
+					switch(calcAST(r, vars)) {
+						// checking right operand
+                    	Some(right): Some(powRationals(left, right));
+                    	None(): None();
+					}
+            	};
+                None(): None();
+            };
+		}
+	}
+}
+
+calcSimplified(expr : string, vars : Tree<string, Rational>) -> Maybe<Rational> {
+	// creating AST, simplifying, calculating it's expression and returning result
+	calcAST(simplify(parsic(initGrammar(), expr, defaultPegActions)), vars);
+}
+
+calc(expr : string, vars : Tree<string, Rational>) -> Maybe<Rational> {
+	// creating AST, calculating it's expression and returning result
+	calcAST(parsic(initGrammar(), expr, defaultPegActions), vars);
+}
+
+main() {
+	// creating and initializing variables-tree
+	vars1 : Tree<string, Rational> = setTree(makeTree(), "x", Rational(1, 2));
+	vars2 = setTree(vars1, "y", Rational(2, 1));
+	vars3 = setTree(vars2, "z", Rational(2, 5));
+	// creating expression
+	expr = "((x ^ y) * (z + ((1 - 0) * (1 / 1))))";
+	// == (((1/2) ^ (2)) * ((2/5) + 1)) == ((1/4) * (7/5)) == 7/20
+	// calculating expression and printing result in console
+	switch(calc(expr, vars3)) {
+		Some(val): {
+			println("EXPRESSION:");
+			println(expr);
+			println("VARIABLES:");
+			println(vars3);
+			println("RESULT:");
+			println(r2s(val));
+		};
+		None(): println("ERROR");
+	}
+	switch(calcSimplified(expr, vars3)) {
+		Some(val): {
+			println("RESULT FOR SIMPLIFIED EXPRESSION:");
+			println(r2s(val));
+		};
+		None(): println("ERROR");
+	}
+}

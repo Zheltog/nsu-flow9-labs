@@ -1,0 +1,45 @@
+import mygrammar;
+
+main() {
+	// creating and initializing variables-tree
+	vars1 : Tree<string, Rational> = setTree(makeTree(), "x", Rational(1, 2));	// x == 1/2
+	vars2 = setTree(vars1, "y", Rational(2, 1));	// y == 2
+	vars3 = setTree(vars2, "z", Rational(2, 5));	// z == 2/5
+	// creating expression
+	expr : Expr = s2e("((x ^ y) * (z + ((1 - 0) * (1 / 1))))");
+	// == (((1/2) ^ (2)) * ((2/5) + 1)) == ((1/4) * (7/5)) == 7/20
+	// calculating expression and printing result in console
+	switch(calc(expr, vars3)) {
+		Some(val): {
+			println("VARIABLES:");
+			println(vars3);
+			println("EXPRESSION:");
+			println(e2s(expr));
+			println("RESULT:");
+			println(r2s(val));
+		};
+		None(): println("ERROR");
+	}
+	// simplifying expression & calculating it again
+	s_expr = simplifyFully(expr);
+	switch(calc(s_expr, vars3)) {
+		Some(val): {
+			println("SIMPLIFIED EXPRESSION:");
+			println(e2s(s_expr));
+			println("RESULT FOR SIMPLIFIED EXPRESSION:");
+			println(r2s(val));
+		};
+		None(): println("ERROR");
+	}
+	// differentiating expression & calculating it once more
+	d_expr_z = simplifyFully(diff(s_expr, "z"));
+	switch(calc(d_expr_z, vars3)) {
+		Some(val): {
+			println("DIFFERENTIATED EXPRESSION:");
+			println(e2s(d_expr_z));
+			println("RESULT FOR DIFFERENTIATED EXPRESSION:");
+			println(r2s(val));
+		};
+		None(): println("ERROR");
+	}
+}

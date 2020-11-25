@@ -1,0 +1,6 @@
+add = mul:left ws "+" ws add:right {Add(:left, :right)} | mul:only {:only};
+mul = int:left ws "*" ws mul:right {Mul(:left, :right)} | int:only {:only};
+int = ws digit+$d ws {IntConst(s2i($d))} | ws var$d ws {Var($d)};
+digit = '0'-'9';
+var = 'a'-'z';
+ws = " "*;

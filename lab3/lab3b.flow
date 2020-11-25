@@ -1,0 +1,28 @@
+import ds/array;
+import runtime;
+
+fibTailHelper(n: int, res: [int]) -> [int] {
+    if (n == 2) {
+        res;
+    } else {
+        fibTailHelper(n-1, concat(res, [res[length(res) - 1] + res[length(res) - 2]]));
+    }
+}
+
+fib(n : int) -> [int] {
+    if (n < 1) {
+        [];
+    } else if (n == 1) {
+        [0];
+    } else {
+        fibTailHelper(n, [0, 1]);
+    }
+}
+
+main () {
+    println(fib(0));
+    println(fib(1));
+    println(fib(2));
+    println(fib(5));
+    println(fib(7));
+}

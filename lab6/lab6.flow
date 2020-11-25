@@ -1,0 +1,32 @@
+import string;
+import lingo/pegcode/driver;
+import mygrammar;
+
+arithGrammarOp: ref Maybe<[PegOp]> = ref None();
+
+ast2str(e : Expr) -> string {
+	// converts ast-tree into string
+	switch(e) {
+		IntConst(c) : {
+			i2s(c);
+		}
+		Mul(l, r) : {
+			"(" + ast2str(l) + " * " + ast2str(r) + ")";
+		}
+		Add(l, r) : {
+			"(" + ast2str(l) + " + " + ast2str(r) + ")";
+		}
+	}
+}
+
+initGrammar() {
+	onlyOnce(arithGrammarOp, \ -> {
+		compilePegGrammar("#include mylingo.lingo");
+	});
+}
+
+main() {
+	ast = parsic(initGrammar(), " 1   + 2     *3   ", defaultPegActions);
+	println(ast);
+	println(ast2str(ast));
+}

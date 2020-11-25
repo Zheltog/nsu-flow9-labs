@@ -1,0 +1,45 @@
+import ds/array;
+import ds/tree;
+import runtime;
+
+inds(a:[int], m:int) -> [Pair<int,int>] {
+    // step 1: creating tree
+    // key: source-array element a_i
+    // value: array of indices i: a[i] == a_i
+    t = foldi(a, makeTree(), \i, tree, a_i -> {
+        // walking across source-array
+
+        switch(lookupTree(tree, a_i)) {
+            // checking if there is some value (== array of indices)
+            // for key 'a_i' (== array element) in our tree
+
+            // there is => adding new index in this node
+            Some(val):  setTree(tree, a_i, concat(val, [i]));
+
+            // there is not => setting value (== first index)
+            None(): setTree(tree, a_i, [i]);
+        }
+    }
+    );
+
+    // step 2:
+    // building array of pairs for returning
+    foldi(a, [], \i, acc, a_i ->
+        switch(lookupTree(t, m - a_i)) {
+            // checking if there is some value (== array of indices)
+            // for key 'm - a_i' in our tree (a_i == a[i])
+
+            // there is => a[j] + a[i] == m (j's are indices from value-array) =>
+            // => buiding pairs (i, j) for all j's and adding this pairs to array
+            Some(val): concat(acc, map(val, \j -> Pair(j, i)));
+
+            // there is not => okay, finishing this iteration
+            None(): acc;
+        }
+    )
+}
+
+main () {
+    intArr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    println(inds(intArr, 9));
+}

@@ -1,0 +1,80 @@
+import math/math;
+import string;
+
+export {
+    // == num/den
+    Rational(num: int, den: int);
+
+    // l * r
+    multRationals(l: Rational, r: Rational) -> Rational;
+    // l / r
+    divRationals(l: Rational, r: Rational) -> Rational;
+    // l ^ r
+    powRationals(l: Rational, r: Rational) -> Rational;
+    // l + r
+    sumRationals(l: Rational, r: Rational) -> Rational;
+    // l - r
+    subRationals(l: Rational, r: Rational) -> Rational;
+    // -r
+    minusRational(r: Rational) -> Rational;
+    // to string
+    r2s(e: Rational) -> string;
+}
+
+multRationals(l: Rational, r: Rational) -> Rational {
+    // finding greatest common divisor*
+    cdiv = gcd(l.num * r.num, l.den * r.den);
+    // calculating and returning result
+    Rational((l.num * r.num)/cdiv, (l.den * r.den)/cdiv);
+
+    // * - we need it to convert (for example) 2/8 to 1/4
+}
+
+divRationals(l: Rational, r: Rational) -> Rational {
+    cdiv = gcd(l.num * r.den, l.den * r.num);
+    Rational((l.num * r.den)/cdiv, (l.den * r.num)/cdiv);
+}
+
+powRationals(num : Rational, power : Rational) -> Rational {
+    if (power.num == 0) {
+        Rational(1, 1);
+    } else {
+        multRationals(num, powRationals(num, Rational(power.num-1, power.den)));
+    }
+}
+
+sumRationals(l: Rational, r: Rational) -> Rational {
+    if (l.den == r.den) {
+        // 1/4 + 2/4 = 3/4
+        Rational(l.num + r.num, l.den);
+    } else {
+        cdiv = gcd(l.num * r.den + r.num * l.den, l.den * r.den);
+        Rational((l.num * r.den + r.num * l.den)/cdiv, (l.den * r.den)/cdiv);
+    }
+}
+
+subRationals(l: Rational, r: Rational) -> Rational {
+    if (l.den == r.den) {
+        // 3/4 - 2/4 = 1/4
+        Rational(l.num - r.num, l.den);
+    } else {
+        cdiv = gcd(l.num * r.den - r.num * l.den, l.den * r.den);
+        Rational((l.num * r.den - r.num * l.den)/cdiv, (l.den * r.den)/cdiv);
+    }
+}
+
+minusRational(r: Rational) -> Rational {
+    // r -> -r
+    Rational(-r.num, r.den);
+}
+
+r2s(e: Rational) -> string {
+    // converting rational to string
+    if (e.den == 1) {
+        // => this rational is actually integer
+        i2s(e.num);
+    } else {
+        // => returning "e.num/e.den"
+        concatStrings([i2s(e.num), "/", i2s(e.den)]);
+    }
+}
