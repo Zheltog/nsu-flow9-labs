@@ -1,0 +1,25 @@
+export {
+    NemoVMThing ::= Program, Declaration, Instruction, VMType, Expression, State;
+
+    Program(decl: [Declaration], instructions: [Instruction]);
+    Declaration(var: string, type: VMType);
+    Instruction(label: int, state: State);
+
+    VMType ::= IntType, ArrayType;
+    IntType();
+    ArrayType(type: VMType);
+
+    Expression ::= IntExpression, ArrayExpression, Var;
+    IntExpression ::= Int, Var, BinOp;
+    ArrayExpression ::= Var, App, Upd;
+    Int(value: int);
+    Var(name: string);
+    BinOp(op: string, l: IntExpression, r: IntExpression);
+    App(arrayName: string, index: string);
+    Upd(arrayName: string, index: string, value: int);
+
+    State ::= Assign, Cond, Print;
+    Assign(v: string, e: Expression, goto: string);
+    Cond(cond: IntExpression, ifStatement: string, elseStatement: string);
+    Print(e: Expression, goto: string);
+}

@@ -1,0 +1,273 @@
+import nemovmimports;
+
+export {
+    executeNemoVM(program: Program) -> void;
+}
+
+/* EXECUTING */
+
+getVoid() -> void {}
+
+countExpression(vd_t: Tree<string, int>, vdiv_t: Tree<string, Pair<int, Tree<[int], int>>>, expression: Expression) -> Maybe<Pair<int, Tree<[int], int>>> {
+    // checking type of expression
+    switch(expression) {
+        // int value 'v' -> returning it
+        Int(v): Some(Pair(0, setTree(makeTree(), [0], v)));
+        // variable (n: name)
+        Var(n): {
+            // does variable 'n' exist (in vdiv-tree)?
+            switch(lookupTree(vdiv_t, n)) {
+                // yes -> returning pair(dimension, indices-values-tree) for 'n'
+                Some(t): Some(t);
+                // no -> returning nothing
+                None(): None();
+            }
+        }
+        // l op r
+        BinOp(op, l, r): {
+            // counting value for left operand
+            switch(countExpression(vd_t, vdiv_t, l)) {
+                Some(l_p): {
+                    // counting value for right operand
+                    switch(countExpression(vd_t, vdiv_t, r)) {
+                        Some(r_p): {
+                            // checking if we actually got int-values
+                            // (dimensions == 0)
+                            if (firstOfPair(l_p) > 0 || firstOfPair(r_p) > 0) {
+                                // error
+                                None();
+                            } else {
+                                // secondOfPair(l_p) and secondOfPair(r_p) are trees ->
+                                // -> getting integer values from them (index [0])...
+                                switch(lookupTree(secondOfPair(l_p), [0])) {
+                                    Some(l_v): {
+                                        switch(lookupTree(secondOfPair(r_p), [0])) {
+                                            Some(r_v): {
+                                                // checking type of operand
+                                                // and returning 1 (true) or 0 (false)
+                                                if (op == "==") {
+                                                    if (l_v == r_v) Some(Pair(0, setTree(makeTree(), [0], 1)))
+                                                    else Some(Pair(0, setTree(makeTree(), [0], 0)));
+                                                } else if (op == "<=") {
+                                                    if (l_v <= r_v) Some(Pair(0, setTree(makeTree(), [0], 1)))
+                                                    else Some(Pair(0, setTree(makeTree(), [0], 0)));
+                                                } else if (op == ">=") {
+                                                    if (l_v >= r_v) Some(Pair(0, setTree(makeTree(), [0], 1)))
+                                                    else Some(Pair(0, setTree(makeTree(), [0], 0)));
+                                                } else if (op == "<") {
+                                                    if (l_v < r_v) Some(Pair(0, setTree(makeTree(), [0], 1)))
+                                                    else Some(Pair(0, setTree(makeTree(), [0], 0)));
+                                                } else if (op == ">") {
+                                                    if (l_v > r_v) Some(Pair(0, setTree(makeTree(), [0], 1)))
+                                                    else Some(Pair(0, setTree(makeTree(), [0], 0)));
+                                                } else if (op == "+") {
+                                                    Some(Pair(0, setTree(makeTree(), [0], l_v + r_v)));
+                                                } else if (op == "-") {
+                                                    Some(Pair(0, setTree(makeTree(), [0], l_v - r_v)));
+                                                } else if (op == "*") {
+                                                    Some(Pair(0, setTree(makeTree(), [0], l_v * r_v)));
+                                                } else if (op == "/") {
+                                                    Some(Pair(0, setTree(makeTree(), [0], l_v / r_v)));
+                                                } else if (op == "%") {
+                                                    Some(Pair(0, setTree(makeTree(), [0], l_v % r_v)));
+                                                } else {
+                                                    // unknown operand -> returning nothing
+                                                    None();
+                                                }
+                                            }
+                                            // got nothing for secondOfPair(r_p)[0] -> returning nothing
+                                            None(): None();
+                                        }
+                                    }
+                                    // got nothing for secondOfPair(l_p)[0] -> returning nothing
+                                    None(): None();
+                                }
+                            }
+                            }
+                        // got nothing for right operand -> returning nothing
+                        None(): None();
+                    }
+                }
+                // got nothing for left operand -> returning nothing
+                None(): None();
+            }
+        }
+        // apply (a: array, i: index)
+        App(a, i): {
+            // does array 'a' exist (in vdiv-tree)?
+            switch(lookupTree(vdiv_t, a)) {
+                // yes ->
+                Some(p): {
+                    switch(lookupTree(secondOfPair(p), str2IntArray(i))) {
+                        // -> is there something in a[i]?
+                        // yes -> returning this value
+                        Some(val): Some(Pair(0, setTree(makeTree(), [0], val)));
+                        // no -> returning nothing
+                        None(): None();
+                    }
+                }
+                // does not exist -> returning nothing
+                None(): None();
+            }
+        }
+        // update (a: array, i: index, v: value)
+        Upd(a, i, v): {
+            // does array 'a' exist (in vdiv-tree)?
+            switch(lookupTree(vdiv_t, a)) {
+                // yes ->
+                Some(p): {
+                    // -> a[i] = v
+                    p1 = Pair(firstOfPair(p), setTree(secondOfPair(p), str2IntArray(i), v));
+                    // returning a (as pair(dimension, indices-values-tree))
+                    Some(p1);
+                }
+                // no
+                None(): {
+                    // is there array 'a' in declarations?
+                    switch(lookupTree(vd_t, a)) {
+                        // yes -> getting dimension of a
+                        Some(d): {
+                            // creating array 'a' (as pair(dimension, indices-values-tree))
+                            t: Tree<[int], int> = makeTree();
+                            // a[i] = v
+                            t1 = setTree(t, str2IntArray(i), v);
+                            // returning a
+                            Some(Pair(d, t1));
+                        }
+                        // no -> returning nothing
+                        None(): None();
+                    }
+                }
+            }
+        }
+    }
+}
+
+executeInstruction(vd_t: Tree<string, int>, vdiv_t: Tree<string, Pair<int, Tree<[int], int>>>,
+i_t: Tree<int, State>, label: int) -> void {
+    // args:
+    // 1. vd_t = variables-dimensions tree
+    // 2. vdiv_t = variables-dimensions-indices-values tree
+    //// for example:
+    //// var x: int;
+    //// x = 5;
+    //// => in vdiv_t for key 'x' there is value Pair(0, tree)
+    //// where in tree for key [0] there is value 5
+    // 3. i_t = instructions tree
+    // 4. label = label of current instruction
+    println(concatStrings(["\nEXECUTING INSTRUCTION ", i2s(label), "..."]));
+    // does instruction №label exist?
+    switch(lookupTree(i_t, label)) {
+        // yes ->
+        Some(currentState): {
+            // checking type of state
+            switch(currentState) {
+                // v = e goto {g}; (v: variable, e: expression)
+                Assign(v, e, g): {
+                    println(concatStrings(["ASSIGN :: variable: ", v, ", expression: ", nemovm2str(e), ", goto: ", g]));
+                    // counting expression
+                    switch(countExpression(vd_t, vdiv_t, e)) {
+                        // success: got value
+                        Some(p): {
+                            // getting dimension of v
+                            switch(lookupTree(vd_t, v)) {
+                                Some(d): {
+                                    if (d != firstOfPair(p)) {
+                                        // v and e have different dimensions -> error
+                                        println("ERROR :: TRY OF CAST");
+                                    } else {
+                                        // dimensions are same -> alright
+                                        // updating variables-dimensions-indices-values tree
+                                        new_vdiv_t = setTree(vdiv_t, v, Pair(firstOfPair(p), secondOfPair(p)));
+                                        // executing next instructions
+                                        map(str2IntArray(g), \g_i -> executeInstruction(vd_t, new_vdiv_t, i_t, g_i));
+                                        getVoid();
+                                    }
+                                }
+                                None(): println("ERROR :: COULD NOT GET DIMENSION OF VARIABLE")
+                            }
+                        }
+                        // got no value for expression
+                        None(): println("ERROR :: COULD NOT COUNT EXPRESSION");
+                    }
+                }
+                // if (c) goto {i} else goto {e}
+                Cond(c, i, e): {
+                    println(concatStrings(["COND :: condition: ", nemovm2str(c), ", true->goto: ", i, ", false->goto: ", e]));
+                    // if-else statement
+                    // counting c-expression
+                    switch(countExpression(vd_t, vdiv_t, c)) {
+                        // success: got value (pair)
+                        Some(cond_v_p): {
+                            // getting integer value from tree of single element (which is second in pair)
+                            switch(lookupTree(secondOfPair(cond_v_p), [0])) {
+                                // success: got value (number)
+                                Some(cond_v): {
+                                    // value != 0 -> condition is true
+                                    // else -> condition is false
+                                    if (cond_v != 0) {
+                                        map(str2IntArray(i), \i_i -> executeInstruction(vd_t, vdiv_t, i_t, i_i));
+                                        getVoid();
+                                    } else {
+                                        map(str2IntArray(e), \e_i -> executeInstruction(vd_t, vdiv_t, i_t, e_i));
+                                        getVoid();
+                                    }
+                                }
+                                // got no integer value from tree
+                                None(): println("ERROR :: COULD NOT COUNT CONDITION EXPRESSION");
+                            }
+                        }
+                        // got no value for condition-expression
+                        None(): println("ERROR :: COULD NOT COUNT CONDITION EXPRESSION");
+                    }
+                }
+                // print(e) goto {g}; (e: expression)
+                Print(e, g): {
+                    println(concatStrings(["PRINT :: expression: ", nemovm2str(e), ", goto: ", g]));
+                    // counting expression
+                    switch(countExpression(vd_t, vdiv_t, e)) {
+                        // success: got value (pair(dimension, indives-values-tree))
+                        Some(p): {
+                            if (firstOfPair(p) > 0) {
+                                // expression is 'array-expression' ->
+                                // -> just printing tree (all array)
+                                println(tree2pairs(secondOfPair(p)));
+                            } else {
+                                // expression is not 'array-expression' ->
+                                // -> getting integer value from tree of single element (2nd in pair)...
+                                switch(lookupTree(secondOfPair(p), [0])) {
+                                    // ...and printing it
+                                    Some(val): println(val);
+                                    // got no integer value from tree
+                                    None(): println("ERROR :: COULD NOT COUNT EXPRESSION");
+                                }
+                            }
+                        }
+                        // got no value for expression
+                        None(): println("ERROR :: COULD NOT COUNT EXPRESSION");
+                    }
+                    // executing next instructions
+                    map(str2IntArray(g), \g_i -> executeInstruction(vd_t, vdiv_t, i_t, g_i));
+                    getVoid();
+                }
+            }
+        }
+        // no, instruction №label does not exist
+        None(): println("ERROR :: INSTRUCTION WAS NOT FOUND");
+    }
+}
+
+/* MAIN EXECUTION FUNCTION */
+
+executeNemoVM(program: Program) -> void {
+    switch (program) {
+        Program(d_a, i_a): {
+            // creating variables-dimensions tree
+            vd_t = createVariablesAndDimensionsTree(d_a);
+            // creating instructions (labels-states) tree
+            i_t = createInstructionsTree(i_a);
+            // executing instruction with label 0 (1st instruction)
+            executeInstruction(vd_t, makeTree(), i_t, 0);
+        }
+    }
+}

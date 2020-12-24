@@ -1,0 +1,28 @@
+NemoThing ::= NemoProgram, NemoDeclaration, NemoType, NemoExpression, NemoState;
+NemoBase ::= NemoProgram, NemoDeclaration, NemoType;
+
+NemoProgram(d: [NemoDeclaration], s: NemoState);
+NemoDeclaration(var: string, type: NemoType);
+
+NemoType ::= NemoIntType, NemoArrayType;
+NemoIntType();
+NemoArrayType(type: NemoType);
+
+NemoExpression ::= NemoIntExpression, NemoArrayExpression;
+NemoArrayExpression ::= NemoUpd, NemoApp, NemoVar;
+NemoIntExpression ::= NemoBinOp, NemoUnOp, NemoVar, NemoInt;
+
+NemoInt(value: int);
+NemoVar(name: string);
+NemoUnOp(op: string, ie: NemoIntExpression);
+NemoBinOp(op: string, l: NemoIntExpression, r: NemoIntExpression);
+NemoApp(array: string, index: string);
+NemoUpd(array: string, index: string, value: int);
+
+NemoState ::= NemoAssign, NemoPrint, NemoTest, NemoSeq, NemoLoop, NemoChoice;
+NemoAssign(v: string, e: NemoExpression);
+NemoPrint(e: NemoExpression);
+NemoTest(ce: NemoIntExpression);
+NemoSeq(l: NemoState, r: NemoState);
+NemoLoop(s: NemoState);
+NemoChoice(l: NemoState, r: NemoState);

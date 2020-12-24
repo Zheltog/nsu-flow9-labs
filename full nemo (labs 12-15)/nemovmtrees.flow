@@ -1,0 +1,50 @@
+import converters;
+
+export {
+    createInstructionsTree(i_a: [Instruction]) -> Tree<int, State>;
+    createVariablesAndDimensionsTree(d_a: [Declaration]) -> Tree<string, int>;
+}
+
+/* LABELS-STATES TREE or INSTRUCTIONS TREE */
+
+getInstructionState(i: Instruction) -> State {
+    switch (i) { Instruction(l, s): s; }
+}
+
+getInstructionLabel(i: Instruction) -> int {
+    switch (i) { Instruction(l, s): l; }
+}
+
+createInstructionsTree(i_a: [Instruction]) -> Tree<int, State> {
+    foldi(i_a, makeTree(), \i, tree, i_a_i ->
+        setTree(tree, getInstructionLabel(i_a_i), getInstructionState(i_a_i)));
+}
+
+/* VARIABLES-DIMENSIONS TREE */
+
+/*
+    dimension of int = 0
+    dimension of [int] = 1
+    dimension of [[int]] = 2
+    ...
+*/
+
+getTypeDimension(type: VMType) -> int {
+    switch(type) {
+        IntType(): 0;
+        ArrayType(t): 1 + getTypeDimension(t);
+    }
+}
+
+getVariableType(d: Declaration) -> VMType {
+    switch (d) { Declaration(v, t): t; }
+}
+
+getVariableName(d: Declaration) -> string {
+    switch (d) { Declaration(v, t): v; }
+}
+
+createVariablesAndDimensionsTree(d_a: [Declaration]) -> Tree<string, int> {
+    foldi(d_a, makeTree(), \i, tree, d_a_i ->
+        setTree(tree, getVariableName(d_a_i), getTypeDimension(getVariableType(d_a_i))));
+}

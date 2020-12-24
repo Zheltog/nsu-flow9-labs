@@ -1,0 +1,34 @@
+prog        =   ws decl*:d ws state:s { NemoProgram(:d, :s) };
+decl        =   ws "var" ws word:v ws ":" ws type:t ws ";" ws { NemoDeclaration(:v, :t) };
+
+type        =   intType | arrayType;
+intType     =   "int" { NemoIntType() };
+arrayType   =   "[" ws type:t ws "]" { NemoArrayType(:t) };
+
+state   =   assign | print | test | seq | loop | choice;
+assign  =   word:l ws "=" ws expression:r { NemoAssign(:l, :r) };
+print   =   "print" ws "(" ws expression:e ws ")" { NemoPrint(:e) };
+test    =   "(" ws intExpression:ce ws ")" ws "?" { NemoTest(:ce) };
+seq     =   "(" ws state:l ws ";" ws state:r ws ")" ws { NemoSeq(:l, :r) };
+loop    =   "*" ws state:e { NemoLoop(:e) };
+choice  =   "(" ws state:l ws "U" ws state:r ws")" ws { NemoChoice(:l, :r) };
+
+expression      =   arrayExpression | intExpression;
+arrayExpression =   upd | app | var;
+intExpression   =   binOp | unOp | var | int;
+
+upd     =   "upd" ws "(" ws word:arrayName ws "," ws array:index ws "," ws number:value ws ")" { NemoUpd(:arrayName, :index, :value) };
+app     =   "app" ws "(" ws word:arrayName ws "," ws array:index ws ")" { NemoApp(:arrayName, :index) };
+binOp   =   "(" ws intExpression:e1 ws binOperator:s ws intExpression:e2 ws ")" { NemoBinOp(:s, :e1, :e2) };
+unOp    =   "-" $s ws intExpression:e { NemoUnOp($s, :e) };
+var     =   word:name { NemoVar(:name) };
+int     =   number:n { NemoInt(:n) };
+
+array           =   ("[" ws digit ws "]") $s {$s} | ("[" ws arrayElement* ws digit ws "]") $s {$s};
+arrayElement    =   digit ws ",";
+number          =   digit+ $s { s2i($s) };
+digit           =   '0' - '9';
+word            =   letter+ $s { $s };
+letter          =   'a' - 'z';
+ws              =   (' ' | '\n' | '\r' | '\t' )*;
+binOperator     =   ( "==" | "<=" | ">=" | "<" | ">" | "+" | "-" | "*" | "/" | "%") $s { $s };

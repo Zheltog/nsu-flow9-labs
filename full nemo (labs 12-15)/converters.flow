@@ -1,0 +1,340 @@
+import lingo/pegcode/driver;
+import math/math;
+import ds/tree;
+import runtime;
+import string;
+
+import nemoelements;
+import nemovmelements;
+
+export {
+    str2IntArray(str: string) -> [int];
+    str2nemovm(str: string) -> Program;
+    nemovm2str(nemovm: NemoVMThing) -> string;
+	str2nemo(str: string) -> NemoProgram;
+	nemo2str(nemo : NemoThing) -> string;
+	nemo2nemovm2str(nemo: NemoProgram) -> string;
+}
+
+/* string -> int array */
+
+str2IntArray(str: string) -> [int] {
+    // "[0, 1, 2]" -> [0, 1, 2]
+    foldi(s2a(str), [], \i, array, s_a_i -> {
+        if (s_a_i >= 48 && s_a_i <= 57) concat(array, [s_a_i-48])
+        else array;
+    });
+}
+
+/* nemo-vm <-> string */
+
+str2nemovm(str: string) -> Program {
+	// converting string to nemo-vm program
+	parsic(compilePegGrammar("#include nemovmgrammar.lingo"), str, defaultPegActions);
+}
+
+nemovm2str(nemovm: NemoVMThing) -> string {
+	// converting nemo-vm program to string
+	switch (nemovm) {
+		Program(d, i): concatStrings(concat(foldi(d, [], \j, acc, d_j, -> concat(acc, [nemovm2str(d_j)])), foldi(i, [], \j, acc, i_j, -> concat(acc, [nemovm2str(i_j)]))));
+		Declaration(v, t): concatStrings(["var ", v, ": ", nemovm2str(t), ";\n"]);
+		Instruction(l, s): concatStrings([i2s(l), ": ", nemovm2str(s), "\n"]);
+
+		ArrayType(t): concatStrings(["[", nemovm2str(t), "]"]);
+		IntType(): "int";
+
+		Int(v): i2s(v);
+		Var(n): n;
+		BinOp(op, l, r): concatStrings(["(", nemovm2str(l), " ", op, " ", nemovm2str(r), ")"]);
+		App(a, i): concatStrings(["app(", a, ", ", i, ")"]);
+		Upd(a, i, v): concatStrings(["upd(", a, ", ", i, ", ", i2s(v), ")"]);
+        
+		Assign(v, e, g): concatStrings([v, " = ", nemovm2str(e), " goto {", g, "};"]);
+		Cond(c, i, e): concatStrings(["if(", nemovm2str(c), ") goto {", i, "} else goto {", e, "};"]);
+		Print(e, g): concatStrings(["print(", nemovm2str(e), ") goto {", g, "};"]);
+	}
+}
+
+/* nemo -> nemo-vm -> string */
+
+createLabelsTree(lt: Tree<int, Pair<Pair<int, int>, string>>, state: NemoState, currentLabel: int) -> Tree<int, Pair<Pair<int, int>, string>> {
+	// -1: goto {lastLabel};
+	// -2: goto {NOWHERE};
+	switch (state) {
+		NemoAssign(v, e): {
+			// v = e
+			// updating labels-tree with info about current instruction
+			lt1 = setTree(lt, currentLabel, Pair(Pair(currentLabel+1, -2), nemo2nemovm2strHlpr(state)));
+			// updating labels-tree with info about last (current) instruction's label
+			lt2 = setTree(lt1, -1, Pair(Pair(currentLabel, -2), ""));
+			lt2;
+		}
+		NemoPrint(e): {
+			// print(e)
+			// updating labels-tree with info about current instruction
+			lt1 = setTree(lt, currentLabel, Pair(Pair(currentLabel+1, -2), nemo2nemovm2strHlpr(state)));
+			// updating labels-tree with info about last (current) instruction's label
+			lt2 = setTree(lt1, -1, Pair(Pair(currentLabel, -2), ""));
+			lt2;
+		}
+		NemoTest(ce): {
+			// ce?
+			// updating labels-tree with info about current instruction
+			lt1 = setTree(lt, currentLabel, Pair(Pair(currentLabel+1, -2), nemo2nemovm2strHlpr(state)));
+			// updating labels-tree with info about last (current) instruction's label
+			lt2 = setTree(lt1, -1, Pair(Pair(currentLabel, -2), ""));
+			lt2;
+		}
+		NemoSeq(l, r): {
+			// (l; r)
+			// updating labels-tree with left operand
+			lt1 = createLabelsTree(lt, l, currentLabel);
+			// is there info about label of last instruction in labels-tree?
+			switch(lookupTree(lt1, -1)) {
+				// yes -> getting it (as Pair(Pair(goto1, goto2), str),
+				// where goto1 is label of last instruction
+				Some(p): {
+					// saving last label
+					lastLabel = firstOfPair(firstOfPair(p));
+					// is there info about last instruction in labels-tree?
+					switch(lookupTree(lt1, lastLabel)) {
+						// yes -> saving it (as Pair(Pair(goto1, goto2)), where str is instruction itself)
+						Some(p1): {
+							// updating labels-tree with right operand
+							lt2 = createLabelsTree(lt1, r, firstOfPair(firstOfPair(p1)));
+							lt2;
+						}
+						None(): lt;
+					}
+				}
+				None(): lt;
+			}
+		}
+		NemoLoop(s): {
+			// updating labels-tree with operand
+			lt1 = createLabelsTree(lt, s, currentLabel);
+			// is there info about label of last instruction in labels-tree?
+			switch(lookupTree(lt1, -1)) {
+				// yes -> getting it (as Pair(Pair(goto1, goto2), str),
+				// where goto1 is label of last instruction
+				Some(p): {
+					// saving last label
+					lastLabel = firstOfPair(firstOfPair(p));
+					// is there info about last instruction in labels-tree?
+					switch(lookupTree(lt1, lastLabel)) {
+						// yes -> saving it (as Pair(Pair(goto1, goto2)), where str is instruction itself)
+						Some(p1): {
+							// changing info about last instruction in labels-tree
+							// (changing 2nd goto to make loop)
+							goto1 = firstOfPair(firstOfPair(p1));
+							goto2 = currentLabel;
+							str = secondOfPair(p1);
+							lt2 = setTree(lt1, lastLabel, Pair(Pair(goto1, goto2), str));
+							lt2;
+						}
+						None(): lt;
+					}
+				}
+				None(): lt;
+			}
+		}
+		NemoChoice(l, r): {
+			// l U r
+			// is there info about label of last instruction in labels-tree?
+			switch(lookupTree(lt, -1)) {
+				// yes -> getting it (as Pair(Pair(goto1, goto2), str),
+				// where goto1 is label of last instruction
+				Some(p): {
+					// saving last label
+					lastLabel = firstOfPair(firstOfPair(p));
+					// is there info about last instruction in labels-tree?
+					switch(lookupTree(lt, lastLabel)) {
+						// yes -> saving it (as Pair(Pair(goto1, goto2)), where str is instruction itself)
+						Some(p1): {
+							// changing info about last instruction in labels-tree
+							lastString = secondOfPair(p1);
+							lt1 = setTree(lt, lastLabel, Pair(Pair(currentLabel, currentLabel+1), lastString));
+							// updating labels-tree with left operand of union
+							lt2 = createLabelsTree(lt1, l, currentLabel);
+							// is there info about label of NEW last instruction in labels-tree?
+							switch(lookupTree(lt2, -1)) {
+								// yes -> getting it (as Pair(Pair(goto1, goto2), str),
+								// where goto1 is label of NEW last instruction
+								Some(p2): {
+									// saving NEW last label
+									newLastLabel = firstOfPair(firstOfPair(p2));
+									// is there info about NEW last instruction in labels-tree?
+									switch(lookupTree(lt2, newLastLabel)) {
+										// yes -> saving it (as Pair(Pair(goto1, goto2)), where str is instruction itself)
+										Some(p3): {
+											// changing info about NEW last instruction in labels-tree
+											newLastString = secondOfPair(p3);
+											lt3 = setTree(lt2, newLastLabel, Pair(Pair(-2, -2), newLastString));
+											// updating labels-tree with right operand of union
+											nextLabel = firstOfPair(firstOfPair(p3));
+											lt4 = createLabelsTree(lt3, r, nextLabel);
+											lt5 = setTree(lt4, lastLabel, Pair(Pair(currentLabel, nextLabel), lastString));
+											lt5;
+										}
+										None(): lt;
+									}
+								}
+								None(): lt;
+							}
+						}
+						None(): lt;
+					}
+				}
+				None(): lt;
+			}
+		};
+	}
+}
+
+buildInstructions(lt: Tree<int, Pair<Pair<int, int>, string>>, currentLabel: int, doneLabels: Tree<int, int>) -> string {
+	// args:
+	// 1. lt - labels-tree
+	// 2. currentLabel - label of current instruction
+	// 3. doneLabels - tree with labels that we worked with
+	//
+	// checking if we already worked with this label
+	switch(lookupTree(doneLabels, currentLabel)) {
+		// yes we did -> exit
+		Some(v): "";
+		// no we did not
+		None(): {
+			// checking if there is current label in labels-tree
+			switch(lookupTree(lt, currentLabel)) {
+				// building instruction for current label and then for both goto's
+				Some(p): {
+					// updating info about done labels
+					dl1 = setTree(doneLabels, currentLabel, 1);
+					goto1 = firstOfPair(firstOfPair(p));
+					goto2 = secondOfPair(firstOfPair(p));
+					// checking values of goto's
+					if (goto1 != -2 && goto2 != -2) {
+						// both goto's are not leading to nowhere
+						concatStrings([i2s(currentLabel), ": ", secondOfPair(p),
+							" goto {[", i2s(goto1), ", ", i2s(goto2), "]}", ";\n",
+								buildInstructions(lt, goto1, dl1),
+									buildInstructions(lt, goto2, dl1)]);
+					} else {
+						if (goto1 != -2) {
+							// 1st goto is not leading to nowhere
+							concatStrings([i2s(currentLabel), ": ", secondOfPair(p),
+								" goto {[", i2s(goto1), "]}", ";\n",
+									buildInstructions(lt, goto1, dl1),
+										buildInstructions(lt, goto2, dl1)]);
+						} else {
+							if (goto2 != -2) {
+								// 2nd goto is not leading to nowhere
+								concatStrings([i2s(currentLabel), ": ", secondOfPair(p),
+									" goto {[", i2s(goto2), "]}", ";\n",
+										buildInstructions(lt, goto1, dl1),
+											buildInstructions(lt, goto2, dl1)]);
+							} else {
+								// both goto's are leading to nowhere
+								concatStrings([i2s(currentLabel), ": ", secondOfPair(p),
+									" goto {[]}", ";\n",
+										buildInstructions(lt, goto1, dl1),
+											buildInstructions(lt, goto2, dl1)]);
+							}
+						}
+					}
+				}
+				None(): "";
+			}
+		}
+	}
+}
+
+nemostate2nemovm2strHlpr(state: NemoState) -> string {
+	// converting nemo state to string
+	// building tree
+	lt = createLabelsTree(makeTree(), state, 0);
+	// is there info about label of last instruction in labels-tree?
+	switch(lookupTree(lt, -1)) {
+		// yes -> getting it (as Pair(Pair(goto1, goto2), str),
+		// where goto1 is label of last instruction
+		Some(p): {
+			// saving last label
+			lastLabel = firstOfPair(firstOfPair(p));
+			// is there info about last instruction in labels-tree?
+			switch(lookupTree(lt, lastLabel)) {
+				// yes -> saving it (as Pair(Pair(goto1, goto2)), where str is instruction itself)
+				Some(p1): {
+					// changing info about last instruction in labels-tree
+					// (making it lead to nowhere)
+					lastString = secondOfPair(p1);
+					lt1 = setTree(lt, lastLabel, Pair(Pair(-2, -2), lastString));
+					// building full nemo-vm instructions & retugning them as single string
+					buildInstructions(lt1, 0, makeTree());
+				}
+				None(): "ERROR :: LABELS-TREE IS NOT CORRECT";
+			}
+		}
+		None(): "ERROR :: LABELS-TREE IS NOT CORRECT";
+	}
+}
+
+nemo2nemovm2strHlpr(nemo: NemoThing) -> string {
+	// converting nemo thing -> nemo-vm thing -> string
+	switch(nemo) {
+		NemoProgram(d, s): concatStrings(concat(foldi(d, [], \j, acc, d_j, -> concat(acc, [nemo2nemovm2strHlpr(d_j)])), [nemostate2nemovm2strHlpr(s)]));
+		NemoDeclaration(v, t): concatStrings(["var ", v, ": ", nemo2nemovm2strHlpr(t), ";\n"]);
+
+		NemoArrayType(t): concatStrings(["[", nemo2nemovm2strHlpr(t), "]"]);
+		NemoIntType(): "int";
+
+		NemoInt(v): i2s(v);
+		NemoVar(n): n;
+		NemoUnOp(op, ie): concatStrings(["(0 ", op, " ", nemo2nemovm2strHlpr(ie), ")"]);
+		NemoBinOp(op, l, r): concatStrings(["(", nemo2nemovm2strHlpr(l), " ", op, " ", nemo2nemovm2strHlpr(r), ")"]);
+		NemoApp(a, i): concatStrings(["app(", a, ", ", i, ")"]);
+		NemoUpd(a, i, v): concatStrings(["upd(", a, ", ", i, ", ", i2s(v), ")"]);
+
+		NemoAssign(v, e): concatStrings([v, " = ", nemo2nemovm2strHlpr(e)]);
+		NemoPrint(e): concatStrings(["print(", nemo2nemovm2strHlpr(e), ")"]);
+		NemoTest(ce): concatStrings(["if(", nemo2nemovm2strHlpr(ce), ")"]);
+		NemoSeq(l, r): concatStrings([]);
+		NemoLoop(s): concatStrings([]);
+		NemoChoice(l, r): concatStrings([]);
+	}
+}
+
+nemo2nemovm2str(program: NemoProgram) -> string {
+	// converting nemo program -> nemo-vm program -> string
+	nemo2nemovm2strHlpr(program);
+}
+
+/* nemo <-> string */
+
+nemo2str(nemo : NemoThing) -> string {
+    // converting nemo program to string
+    switch (nemo) {
+		NemoProgram(d, s): concatStrings(concat(foldi(d, [], \j, acc, d_j, -> concat(acc, [nemo2str(d_j)])), [nemo2str(s)]));
+		NemoDeclaration(v, t): concatStrings(["var ", v, ": ", nemo2str(t), ";\n"]);
+
+		NemoArrayType(t): concatStrings(["[", nemo2str(t), "]"]);
+		NemoIntType(): "int";
+
+		NemoInt(v): i2s(v);
+		NemoVar(n): n;
+		NemoUnOp(op, ie): concatStrings([op, " ", nemo2str(ie)]);
+		NemoBinOp(op, l, r): concatStrings(["(", nemo2str(l), " ", op, " ", nemo2str(r), ")"]);
+		NemoApp(a, i): concatStrings(["app(", a, ", ", i, ")"]);
+		NemoUpd(a, i, v): concatStrings(["upd(", a, ", ", i, ", ", i2s(v), ")"]);
+		
+		NemoAssign(v, e): concatStrings([v, " = ", nemo2str(e)]);
+        NemoPrint(e): concatStrings(["print(", nemo2str(e), ")"]);
+        NemoTest(ce): concatStrings(["(", nemo2str(ce), ")?"]);
+        NemoSeq(l, r): concatStrings(["(", nemo2str(l), "; ", nemo2str(r), ")"]);
+        NemoLoop(s): concatStrings(["*", nemo2str(s)]);
+		NemoChoice(l, r): concatStrings(["(", nemo2str(l), " U ", nemo2str(r), ")"]);
+    }
+}
+
+str2nemo(str: string) -> NemoProgram {
+	// converting string to nemo program
+	parsic(compilePegGrammar("#include nemogrammar.lingo"), str, defaultPegActions);
+}

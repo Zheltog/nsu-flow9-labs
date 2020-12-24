@@ -1,0 +1,64 @@
+import nemovm;
+
+main() {
+	nemostr1 = "var x: int;\n(x = 0; (*(((x < 3))?; x = (x + 1)); ((x >= 3))?))";
+	println("FIRST PROGRAM AS STRING:");
+	println(nemostr1);
+	nemoprog1 = str2nemo(nemostr1);
+	println("\nFIRST PROGRAM CONVERTED TO NEMO:");
+	println(nemoprog1);
+	nemovmstr1 = nemo2nemovm2str(nemoprog1);
+	println("\nFIRST PROGRAM CONVERTED FROM NEMO TO NEMO-VM TO STRING:");
+	println(nemovmstr1);
+	nemovmprog1 = str2nemovm(nemovmstr1);
+	println("FIRST PROGRAM CONVERTED FROM STRING TO NEMO-VM:");
+	println(nemovmprog1);
+	println("\nEXECUTING FIRST PROGRAM...");
+    executeNemoVM(nemovmprog1);
+
+	nemostr2 = "var x: int;\n(x = 1; ((((x > 0))?; x = 3); (x = 5 U x = 7)))";
+	println("\nSECOND PROGRAM AS STRING:");
+	println(nemostr2);
+	nemoprog2 = str2nemo(nemostr2);
+	println("\nSECOND PROGRAM CONVERTED TO NEMO:");
+	println(nemoprog2);
+	nemovmstr2 = nemo2nemovm2str(nemoprog2);
+	println("\nSECOND PROGRAM CONVERTED FROM NEMO TO NEMO-VM TO STRING:");
+	println(nemovmstr2);
+	nemovmprog2 = str2nemovm(nemovmstr2);
+	println("SECOND PROGRAM CONVERTED FROM STRING TO NEMO-VM:");
+	println(nemovmprog2);
+	println("\nEXECUTING SECOND PROGRAM...");
+    executeNemoVM(nemovmprog2);
+
+	nemostr3 = "var x: int;\nvar y: [int];\n(y = upd(y, [0], 1); (y = upd(y, [1], 2); (x = app(y, [1]); (print(x); print(y)))))";
+	println("\nTHIRD PROGRAM AS STRING:");
+	println(nemostr3);
+	nemoprog3 = str2nemo(nemostr3);
+	println("\nTHIRD PROGRAM CONVERTED TO NEMO:");
+	println(nemoprog3);
+	nemovmstr3 = nemo2nemovm2str(nemoprog3);
+	println("\nTHIRD PROGRAM CONVERTED FROM NEMO TO NEMO-VM TO STRING:");
+	println(nemovmstr3);
+	nemovmprog3 = str2nemovm(nemovmstr3);
+	println("THIRD PROGRAM CONVERTED FROM STRING TO NEMO-VM:");
+	println(nemovmprog3);
+	println("\nEXECUTING THIRD PROGRAM...");
+    executeNemoVM(nemovmprog3);
+
+	// invalid program: trying to cast [int] to int -> should fail
+	error_nemostr = "var x: int;\nvar y: [int];\n(y = upd(y, [0], 1); (y = upd(y, [1], 2); (x = y; (print(x); print(y)))))";
+	println("\nINVALID PROGRAM AS STRING:");
+	println(error_nemostr);
+	error_nemoprog = str2nemo(error_nemostr);
+	println("\nINVALID PROGRAM CONVERTED TO NEMO:");
+	println(error_nemoprog);
+	error_nemovmstr = nemo2nemovm2str(error_nemoprog);
+	println("\nINVALID PROGRAM CONVERTED FROM NEMO TO NEMO-VM TO STRING:");
+	println(error_nemovmstr);
+	error_nemovmprog = str2nemovm(error_nemovmstr);
+	println("INVALID PROGRAM CONVERTED FROM STRING TO NEMO-VM:");
+	println(error_nemovmprog);
+	println("\nEXECUTING INVALID PROGRAM...");
+    executeNemoVM(error_nemovmprog);
+}

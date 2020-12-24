@@ -1,0 +1,32 @@
+program     =   declaration*:d ws instruction*:i { Program(:d, :i) };
+declaration =   ws "var" ws word:v ws ":" ws type:t ws ";" ws { Declaration(:v, :t) };
+instruction =   ws number:n ws ":" ws state:s ws { Instruction(:n, :s) };
+
+type        =   intType | arrayType;
+intType     =   "int" { IntType() };
+arrayType   =   "[" ws type:t ws "]" { ArrayType(:t) };
+
+expression      =   arrayExpression | intExpression;
+arrayExpression =   app | upd | var;
+intExpression   =   binOp | int | var;
+
+upd     =   "upd" ws "(" ws word:arrayName ws "," ws array:index ws "," ws number:value ws ")" { Upd(:arrayName, :index, :value) };
+app     =   "app" ws "(" ws word:arrayName ws "," ws array:index ws ")" { App(:arrayName, :index) };
+binOp   =   "(" ws intExpression:e1 ws binOperator:s ws intExpression:e2 ws ")" { BinOp(:s, :e1, :e2) };
+var     =   word:name { Var(:name) };
+int     =   number:n { Int(:n) };
+
+state   =   assign | cond | print;
+assign  =   word:l ws "=" ws expression:r ws "goto" ws "{" ws array:goto ws "}" ws ";" { Assign(:l, :r, :goto) };
+cond    =   "if" ws "(" ws intExpression:condVar ws ")" ws "goto" ws "{" ws array:goto1 ws "}" ws "else" ws "goto" ws "{" ws array:goto2 ws "}" ws ";" { Cond(:condVar, :goto1, :goto2) }
+            | "if" ws "(" ws intExpression:condVar ws ")" ws "goto" ws "{" ws array:goto1 ws "}" ws ";" {Cond(:condVar, :goto1, "[]")};
+print   =   "print" ws "(" ws expression:e ws ")" ws "goto" ws "{" ws array:goto ws "}" ws ";" { Print(:e, :goto) };
+
+array           =   ("[]") $s {$s} | ("[" ws digit ws "]") $s {$s} | ("[" ws arrayElement* ws digit ws "]") $s {$s};
+arrayElement    =   digit ws ",";
+number          =   digit+ $s { s2i($s) };
+digit           =   '0' - '9';
+word            =   letter+ $s { $s };
+letter          =   'a' - 'z';
+ws              =   (' ' | '\n' | '\r' | '\t' )*;
+binOperator     =   ( "==" | "<=" | ">=" | "<" | ">" | "+" | "-" | "*" | "/" | "%") $s { $s };
